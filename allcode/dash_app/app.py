@@ -1,7 +1,13 @@
 import dash
+import base64
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+from allcode.controllers.app_controller.simple_image_manager import SimpleImageManager
+
+# Ths should be become a separate service, and the app's details should be stored in the app_config.py:
+image_dir = "./data/cat_dog_images"
+# image_manager = simple_image_manager(image_dir, )
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -15,21 +21,59 @@ app.layout = app.layout = html.Div(children=[
 
     # Not sure how to center the button...
     dcc.Upload(html.Button('Upload File',
-                           id='upload_button',
-                           style={
-                               'margin': '0',
-                               'width': '144px'
-                           }),
+                           id='upload_button'),
                id="upload_image"),
+
+    html.H3(children='Uploaded image',
+            id="uploaded_image_title",
+            style={'marginLeft': 700}),
+
     html.Div([
         html.Img(id='uploaded_image', width=300),
-    ], className="five columns")
+    ], className="five columns", style={'marginLeft': 650, "marginTop": 25}),
+
+    # html.H3(children='5 Most comparable images',
+    #         id="knn_title",
+    #         style={'marginLeft': 700}),
+
+
+    html.Div([
+        html.Table(
+            [html.Tr([
+                html.Td(html.Img(id='knn_image1', width=300)),
+                html.Td(html.Img(id="knn_image2", width=300)),
+                html.Td(html.Img(id="knn_image3", width=300)),
+                html.Td(html.Img(id="knn_image4", width=300)),
+                html.Td(html.Img(id="knn_image5", width=300))])],
+            id='res_table2')])
+
 ])
 
-@app.callback(Output('uploaded_image', 'src'),
+
+@app.callback([Output('uploaded_image', 'src'),
+               Output('knn_image1', 'src'),
+               Output('knn_image2', 'src'),
+               Output('knn_image3', 'src'),
+               Output('knn_image4', 'src'),
+               Output('knn_image5', 'src')],
               [Input('upload_image', 'contents')])
 def update_output(image):
-    return image
+    if image is None: #  Do not update if no image is selected
+        raise dash.exceptions.PreventUpdate
+    image_dir = "./data/cat_dog_images"
+    k_in_knn = 5
+    image_manager = SimpleImageManager(image_dir, k_in_knn)
+    res = image_manager.processes_image(image)
+
+    enc_images = [base64.b64encode(open(im, "rb").read()) for im in res.knn5_image_locations['image_loc'].tolist()]
+    src_ready_images = ['data:image/jpg;base64,{}'.format(im.decode()) for im in enc_images]
+
+    return image, \
+           src_ready_images[0], \
+           src_ready_images[1], \
+           src_ready_images[2], \
+           src_ready_images[3], \
+           src_ready_images[4]
 
 
 if __name__ == '__main__':

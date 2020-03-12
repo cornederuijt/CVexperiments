@@ -94,11 +94,11 @@ pl.imshow(imy)
 pl.imshow(magnitude)
 
 # Exercise 7) Some fun with SIFT
-img = cv2.imread('./data/raw_data/dogs-vs-cats/train/cat.128.jpg')
+img = cv2.imread('./data/cat_dog_images/cat.128.jpg')
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 sift = cv2.xfeatures2d.SIFT_create()
-kp = sift.detect(gray, None)
+kp, desc = sift.detectAndCompute(gray, None)
 
 img=cv2.drawKeypoints(gray, kp, 1, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 

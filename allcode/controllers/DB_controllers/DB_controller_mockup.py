@@ -1,15 +1,12 @@
 import pandas as pd
 import numpy as np
 import os
+from allcode.controllers.DB_controllers import DBController
 
 
-class DBControllerMockup:
+class DBControllerMockup(DBController):
     def __init__(self, image_sub_dir):
-        self._image_sub_dir = image_sub_dir
-
-    @property
-    def image_sub_directory(self):
-        return self._image_sub_dir
+        super().__init__(image_sub_dir)
 
     def get_knn(self, image, k):
         # Actual image not use here, just draw K random images

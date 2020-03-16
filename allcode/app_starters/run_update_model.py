@@ -32,7 +32,7 @@ if __name__ == '__main__':
     keypoint_indices, keypoint_mat = im_to_vec_converter.get_keypoint_matrix_multi_image_location(test_images)
 
     # Dog = 1, cat = 0
-    classes = np.stack((np.zeros(30), np.ones(30)))
+    classes = np.hstack((np.zeros(30), np.ones(30)))
 
     # TODO: Following should be loaded from a file (these are default settings)
     xgb1 = XGBClassifier(

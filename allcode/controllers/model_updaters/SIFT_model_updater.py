@@ -1,16 +1,14 @@
-from allcode.controllers.image_converters.SIFT_image_to_vec import SIFTImageToVecConverter
 from allcode.models.im_to_vec_models.SIFTVBoW import SIFTVBoW
-import numpy as np
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
-from sklearn import model_selection
 import multiprocessing as mp
-from xgboost.sklearn import XGBClassifier
+import pickle as pl
 
 
 class SIFTModelUpdater:
 
-    def update_model(self, image_matrix, classes, model_store_loc, random_state, k_in_kmeans, xgb_empty_model):
+    def update_and_store_model(self, image_matrix, image_indices, classes, model_store_loc, random_state, k_in_kmeans,
+                               xgb_empty_model):
         image_power_transformer = preprocessing.PowerTransformer().fit(image_matrix)
         image_mat_scaled = image_power_transformer.transform(image_matrix)
 
@@ -25,7 +23,7 @@ class SIFTModelUpdater:
         # fit the xgb model:
         xgb_model = xgb_empty_model.fit(kmeans_cluster_mat, classes)
 
-        siftbow_model = SIFTVBoW(power_transformer, k_means_model_best)
+        siftbow_model = SIFTVBoW(image_power_transformer, kmeans_model, xgb_model)
 
-        return siftbow_model, xgb_model, k_grid, sse_aic_list
+        pl.dump(siftbow_model, open(model_store_loc, "rb"))
 

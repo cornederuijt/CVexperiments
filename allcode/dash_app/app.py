@@ -4,6 +4,11 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 from allcode.controllers.app_controller.simple_image_manager import SimpleImageManager
+from PIL import Image
+from PIL.JpegImagePlugin import Image
+import numpy as np
+import cv2
+import io
 
 # Ths should be become a separate service, and the app's details should be stored in the app_config.py:
 image_dir = "./data/cat_dog_images"
@@ -63,7 +68,15 @@ def update_output(image):
     image_dir = "./data/cat_dog_images"
     k_in_knn = 5
     image_manager = SimpleImageManager(image_dir, k_in_knn)
-    res = image_manager.processes_image(image)
+
+    #TODO: Check FLASK, perhaps answers there rather than in Dash directly
+    image = Image.open(io.BytesIO(base64.b64decode(image)))
+    image.show()
+
+    nparr = np.fromstring(base64.b64encode(image), np.uint8)
+    img_np = cv2.imdecode(nparr, cv2.COLOR_BGR2GRAY)  # cv2.IMREAD_COLOR in OpenCV 3.1
+
+    res = image_manager.processes_image(img_np)
 
     enc_images = [base64.b64encode(open(im, "rb").read()) for im in res.knn5_image_locations['image_loc'].tolist()]
     src_ready_images = ['data:image/jpg;base64,{}'.format(im.decode()) for im in enc_images]

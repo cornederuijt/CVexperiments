@@ -49,8 +49,8 @@ if __name__ == '__main__':
         seed=27)
 
     # self, image_matrix, classes, model_store_loc, random_state, k_in_kmeans, xgb_empty_model
-    sift_model = sift_model_updater.update_and_store_model(keypoint_mat, keypoint_indices, classes, model_store_loc,
-                                                           rand_state, k_in_kmeans, xgb1)
+    sift_model_updater.update_and_store_model(keypoint_mat, keypoint_indices, classes, model_store_loc, rand_state,
+                                              k_in_kmeans, xgb1, test_images)
 
 
 

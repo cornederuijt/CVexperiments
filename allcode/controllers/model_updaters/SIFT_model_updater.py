@@ -7,10 +7,11 @@ import numpy as np
 import pandas as pd
 
 
+# TODO: Just make this part of the SIFTBoW class
 class SIFTModelUpdater:
 
     def update_and_store_model(self, image_matrix, image_indices, classes, model_store_loc, random_state, k_in_kmeans,
-                               xgb_empty_model):
+                               xgb_empty_model, image_loc):
         image_power_transformer = preprocessing.PowerTransformer().fit(image_matrix)
         image_mat_scaled = image_power_transformer.transform(image_matrix)
 
@@ -22,7 +23,7 @@ class SIFTModelUpdater:
 
         # Transform computes distances to cluster centroids, take min to assign to a cluster
         kmeans_cluster_res = pd.concat([pd.Series(image_indices, name="image_id"),
-            pd.Series(np.argmin(kmeans_model.transform(image_matrix), axis=1), name="cluster")], axis=1)
+            pd.Series(np.argmin(kmeans_model.transform(image_mat_scaled), axis=1), name="cluster")], axis=1)
 
         # Compute the cluster histogram per image over the clusters
         cluster_freq_per_image = kmeans_cluster_res\
@@ -46,4 +47,8 @@ class SIFTModelUpdater:
         siftbow_model = SIFTVBoW(image_power_transformer, kmeans_model, xgb_model, image_mat_col_sums)
 
         pl.dump(siftbow_model, open(model_store_loc, "wb"))
+
+        image_bin_normalized_pd = pd.DataFrame(image_bin_normalized)
+        image_bin_normalized_pd['image_loc'] = image_loc
+        image_bin_normalized_pd.to_csv("./stored_models/data_vectorized.csv", index=False)
 

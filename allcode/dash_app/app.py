@@ -5,6 +5,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 from allcode.controllers.app_controller.simple_image_manager import SimpleImageManager
 from PIL import Image
+import PIL
 from PIL.JpegImagePlugin import Image
 import numpy as np
 import cv2
@@ -69,14 +70,9 @@ def update_output(image):
     k_in_knn = 5
     image_manager = SimpleImageManager(image_dir, k_in_knn)
 
-    #TODO: Check FLASK, perhaps answers there rather than in Dash directly
-    image = Image.open(io.BytesIO(base64.b64decode(image)))
-    image.show()
+    image_np = np.array(Image.open(io.BytesIO(base64.b64decode(image.split(",")[1]))))
 
-    nparr = np.fromstring(base64.b64encode(image), np.uint8)
-    img_np = cv2.imdecode(nparr, cv2.COLOR_BGR2GRAY)  # cv2.IMREAD_COLOR in OpenCV 3.1
-
-    res = image_manager.processes_image(img_np)
+    res = image_manager.processes_image(image_np)
 
     enc_images = [base64.b64encode(open(im, "rb").read()) for im in res.knn5_image_locations['image_loc'].tolist()]
     src_ready_images = ['data:image/jpg;base64,{}'.format(im.decode()) for im in enc_images]

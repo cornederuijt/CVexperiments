@@ -20,8 +20,8 @@ class SimpleImageManager:
         image_knn = self._db_controller.get_knn(image_vec_rep, self._k_in_knn)
 
         res = SimpleImageProcessResult(image,
-                                       image_classifier_res['final_class'],
-                                       image_classifier_res['final_prob'],
+                                       image_classifier_res[0]['class'],
+                                       image_classifier_res[0]['probability'],
                                        image_knn)
 
         return res

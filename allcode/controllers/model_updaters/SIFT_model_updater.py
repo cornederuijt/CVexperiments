@@ -7,14 +7,17 @@ import numpy as np
 import pandas as pd
 
 
-# TODO: Just make this part of the SIFTBoW class
 class SIFTModelUpdater:
 
     def update_and_store_model(self, image_matrix, image_indices, classes, model_store_loc, random_state, k_in_kmeans,
                                xgb_empty_model, image_loc):
+
+        # Stap 1: Normalizeer de keypoint beschrijvingen (bv. zodat ze minder gevoelig zijn voor de lichtheid van het plaatje)
+        # Ik gebruik een PowerTransformer omdat ik K-means gebruik: anders heb je bij outliers kans dat deze je cluster verpesten
         image_power_transformer = preprocessing.PowerTransformer().fit(image_matrix)
         image_mat_scaled = image_power_transformer.transform(image_matrix)
 
+        #
         kmeans_model = KMeans(n_clusters=k_in_kmeans,
                               max_iter=1000,
                               random_state=random_state,

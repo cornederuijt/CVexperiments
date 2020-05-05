@@ -1,56 +1,69 @@
 from allcode.models.im_to_vec_models.SIFTVBoW import SIFTVBoW
 import numpy as np
+import numpy.random as rd
 from sklearn.cluster import KMeans
 from sklearn import preprocessing
 from sklearn import model_selection
+from allcode.controllers.image_converters.SIFT_image_to_vec import SIFTImageToVecConverter
+from allcode.controllers.model_updaters.SIFT_model_updater import SIFTModelUpdater
+from allcode.misc.validate_classification_models import ClassificationModelValidator
 
 
 class SIFTModelValidator:
 
-    def update_model(self, image_matrix, classes, model_store_loc, random_state, train_frac=0.7, valid_frac=0.1, test_frac=0.2):
-        # TODO: Check how large this matrix becomes, 500 x 128 per image. So 100 images already gives a pretty large matrix
-        # TODO: There's also mini batch k-means on SKLEARN: https://scikit-learn.org/stable/modules/generated/sklearn.cluster.MiniBatchKMeans.html#sklearn.cluster.MiniBatchKMeans
-        # TODO (in case memory becomes an issue), DBSCAN and OPTICS are also options which are quicker (and do not work with Euclidean distance)
+    @staticmethod
+    def validate_models(images, classes, valid_frac=0.1, test_frac=0.2, default_k_in_kmeans=500, seed=1992):
+        # 0) Set seed:
+        np.random.seed(seed)
 
-        X_train, y_train, X_test, y_test = model_selection\
-            .train_test_split(image_matrix, classes,
-                              test_size=valid_frac+test_frac,
-                              random_state=random_state.get_state())
+        # 1) Convert images to large vector
+        im_to_vec_converter = SIFTImageToVecConverter()
+        image_indices, keypoint_mat = im_to_vec_converter.get_keypoint_matrix_multi_image_location(images)
 
-        X_test, y_test, X_valid, y_valid = model_selection\
-            .train_test_split(image_matrix, classes,
-                              test_size=valid_frac/(valid_frac+test_frac),
-                              random_state=random_state.get_state())
+        # Run K_means with a default number of clusters. Following
+        # https://www.researchgate.net/post/Image_classification_using_SIFT_features_and_SVM2:
+        # "the 'K' parameter (the number of clusters) depends on the number of SIFTs that you have for training,
+        # but usually is around 500->8000 (the higher, the better)."
+        # As default value we use the minimum: 500 (btw, obviously 'the higher the better', is not completely true)
 
-        # Based on 128 size vectors for each key point (first Fibonacci number after ceil(2*sqrt(128))=23)
-        k_grid = [2, 3, 5, 8, 13, 21, 34]
-        k_means_model_best, power_transformer, X_train_scaled, sse_aic_list = \
-            self._find_optimal_clusters_AIC(X_train, k_grid, random_state)
+        # 2) Split images into train, validation, and test (.7, 0.1(=1-.9), and 0.2 (=1-0.7-0.1))
+        train_frac = 1 - (valid_frac + test_frac)
+        unique_image_indices = np.unique(image_indices)
+        train_ind, val_ind, test_ind = np.split(rd.choice(unique_image_indices,
+                                                   size=unique_image_indices.shape[0],
+                                                   replace=False),
+                                        [int(train_frac * unique_image_indices.shape[0]),
+                                          int((1 - valid_frac) * unique_image_indices.shape[0])])
 
-        siftbow_model = SIFTVBoW(power_transformer, k_means_model_best)
+        # 3) Run initial K-means model
+        # First train the k_means model on the training data:
+        im_ind_in_train = np.isin(image_indices, train_ind)
+        im_id_in_valid = np.isin(image_indices, val_ind)
 
-        return siftbow_model, image_mat_scaled, k_grid, sse_aic_list
+        kmeans_model, image_power_transformer, image_bin_normalized_train, image_mat_col_sums = \
+            SIFTModelUpdater.run_BoW(keypoint_mat[im_ind_in_train],
+                                     image_indices[im_ind_in_train],
+                                     k_in_kmeans=default_k_in_kmeans)
 
-    def _find_optimal_clusters_AIC(self, image_mat, k_grid, random_state):
-        # First perform power transform and scale:
-        image_power_transformer = preprocessing.PowerTransformer().fit(image_mat)
-        image_mat_scaled = image_power_transformer.transform(image_mat)
+        # Run k-means on validation:
+        _, _, image_bin_normalized_valid, _ = \
+            SIFTModelUpdater.run_BoW(keypoint_mat[im_id_in_valid],
+                                     image_indices[im_id_in_valid],
+                                     kmeans_model=kmeans_model,
+                                     image_power_transformer=image_power_transformer,
+                                     image_mat_col_sums=image_mat_col_sums)
 
-        # Fit k_means for different k and compute AIC
-        sse_aic_list = []
-        k_means_model_best = None
-        sse_best_aic = np.inf
-        for k in k_grid:
-            k_means_model = KMeans(n_clusters=k, max_iter=1000, random_state=random_state.get_state())\
-                .fit(image_mat_scaled)
-            cur_sse_aic = 2 * (k_means_model.intertia_ - k)
-            sse_aic_list = sse_aic_list.append(cur_sse_aic)  # apparently this is the SSE
+        # 4) Run the auto-ML: test on logistic regression, Random forest, XGBoost, SVM, and KNN
+        # TODO: Check whether order of X_mat and labels are correct!
+        ClassificationModelValidator.run_auto_ml(image_bin_normalized_train, image_bin_normalized_valid,
+                                                 classes[train_ind], classes[val_ind])
 
-            if cur_sse_aic < sse_best_aic:
-                sse_best_aic = cur_sse_aic
-                k_means_model_best = k_means_model
 
-        return k_means_model_best, \
-               image_power_transformer, \
-               image_mat_scaled, \
-               sse_aic_list  # Note that the SSE is included in the best model by intertia prop
+
+
+
+
+
+
+
+
